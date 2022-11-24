@@ -23,7 +23,7 @@
     <appender name="ASTD" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT" />
     </appender>
-    <logger name="org.eclipse.jetty" level="WARN"/>
+    <logger name="org.eclipse.jetty" level="DEBUG"/>
     <logger name="ru.emdev.echo" level="DEBUG"/>
     <root level="DEBUG">
         <appender-ref ref="AFILE"/>

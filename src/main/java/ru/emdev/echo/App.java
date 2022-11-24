@@ -16,8 +16,16 @@ public class App {
         Arguments arguments = new Arguments();
         JCommander.newBuilder().addObject(arguments).build().parse(args);
         logger.info("Starting with {}", arguments);
-        ServerStarter starter = new ServerStarter(arguments.getPort(),
-                arguments.getMaxThreads());
+        ServerStarter starter;
+        if (arguments.getSsl() && arguments.getKeypass() != null && arguments.getKeystore() != null) {
+            starter = new ServerStarter(arguments.getPort(),
+                    arguments.getMaxThreads(),
+                    arguments.getKeystore(),
+                    arguments.getKeypass());
+        } else {
+            starter = new ServerStarter(arguments.getPort(),
+                    arguments.getMaxThreads());
+        }
         starter.start();
     }
 }
@@ -35,8 +43,11 @@ class Arguments {
     @Parameter(names = {"--ssl"})
     private Boolean ssl = false;
 
-    @Parameter(names = {"--keystore"})
+    @Parameter(names = {"--keyfile", "-ks"})
     private String keystore = null;
+
+    @Parameter(names = {"--keypass", "-kp"})
+    private String keypass = null;
 
     public Integer getPort() {
         return port;
@@ -60,6 +71,30 @@ class Arguments {
 
     public void setMaxThreads(Integer maxThreads) {
         this.maxThreads = maxThreads;
+    }
+
+    public Boolean getSsl() {
+        return ssl;
+    }
+
+    public void setSsl(Boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    public String getKeystore() {
+        return keystore;
+    }
+
+    public void setKeystore(String keystore) {
+        this.keystore = keystore;
+    }
+
+    public String getKeypass() {
+        return keypass;
+    }
+
+    public void setKeypass(String keypass) {
+        this.keypass = keypass;
     }
 
     @Override
