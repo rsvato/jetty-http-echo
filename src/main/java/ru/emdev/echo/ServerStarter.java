@@ -3,6 +3,8 @@ package ru.emdev.echo;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
+import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
@@ -13,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Properties;
 
 public class ServerStarter {
 
@@ -45,20 +46,20 @@ public class ServerStarter {
     public void start() {
         Server server = new Server(pool);
         HttpConfiguration http = new HttpConfiguration();
+        HttpConnectionFactory http11 = new HttpConnectionFactory(http);
+        ServerConnector connector;
         if (ssl) {
-            http.addCustomizer(new SecureRequestCustomizer(false));
+            HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(http);
+            ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
+            ConnectionFactory connectionFactory = buildConnectionFactory(http, alpn.getProtocol());
+            alpn.setDefaultProtocol(http11.getProtocol());
+            connector = new ServerConnector(server, connectionFactory, alpn, h2, http11);
+        } else {
+            connector = new ServerConnector(server, http11);
         }
-        ConnectionFactory connectionFactory = buildConnectionFactory();
-        ServerConnector connector = new ServerConnector(server, connectionFactory,
-                new HttpConnectionFactory(http));
         server.addConnector(connector);
         connector.setPort(port);
         connector.setIdleTimeout(1000);
-
-        if (ssl) {
-
-        }
-
         server.setHandler(new EchoHandler());
         try {
             logger.info("Starting server on port {}", port);
@@ -74,38 +75,33 @@ public class ServerStarter {
         }
     }
 
-    private ConnectionFactory buildConnectionFactory() {
+    private ConnectionFactory buildConnectionFactory(HttpConfiguration http, String protocol) {
         ConnectionFactory result;
-        if (ssl) {
-            SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
-            sslContextFactory.setTrustAll(true);
-            sslContextFactory.setKeyStorePath(keyfile);
-            sslContextFactory.setKeyStorePassword(keypass);
-            sslContextFactory.setKeyStoreType("JKS");
-            sslContextFactory.setSniRequired(false);
-            Properties props = System.getProperties();
-            props.setProperty("jdk.internal.httpclient.disableHostnameVerification",Boolean.TRUE.toString());
-            sslContextFactory.setProtocol("TLS");
-            result = new SslConnectionFactory(sslContextFactory, "http/1.1");
-        } else {
-            result = new HttpConnectionFactory();
-        }
+        SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+        sslContextFactory.setTrustAll(true);
+        sslContextFactory.setKeyStorePath(keyfile);
+        sslContextFactory.setKeyStorePassword(keypass);
+        sslContextFactory.setKeyStoreType("JKS");
+        sslContextFactory.setSniRequired(false);
+        http.addCustomizer(new SecureRequestCustomizer(false));
+        result = new SslConnectionFactory(sslContextFactory, protocol);
         return result;
     }
 
     private static class EchoHandler extends AbstractHandler {
 
         @Override
-        public void handle(String target, Request jettyRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        public void handle(String target, Request jettyRequest, HttpServletRequest request,
+                HttpServletResponse response) throws IOException, ServletException {
             String contentType = request.getContentType();
             if (contentType != null) {
                 response.setContentType(contentType);
             }
             response.setContentLength(request.getContentLength());
             try (InputStream in = request.getInputStream();
-                    OutputStream out = response.getOutputStream()){
-               in.transferTo(out);
-               out.flush();
+                    OutputStream out = response.getOutputStream()) {
+                in.transferTo(out);
+                out.flush();
             }
             jettyRequest.setHandled(true);
         }

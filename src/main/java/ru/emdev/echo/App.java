@@ -37,9 +37,6 @@ class Arguments {
     @Parameter(names = { "--threads", "-t"})
     private Integer maxThreads = 20;
 
-    @Parameter(names = {"--http2"})
-    private Boolean http2 = false;
-
     @Parameter(names = {"--ssl"})
     private Boolean ssl = false;
 
@@ -55,14 +52,6 @@ class Arguments {
 
     public void setPort(Integer port) {
         this.port = port;
-    }
-
-    public Boolean getHttp2() {
-        return http2;
-    }
-
-    public void setHttp2(Boolean http2) {
-        this.http2 = http2;
     }
 
     public Integer getMaxThreads() {
@@ -102,7 +91,6 @@ class Arguments {
         return "Arguments{" +
                 "port=" + port +
                 ", maxThreads=" + maxThreads +
-                ", http2=" + http2 +
                 ", ssl=" + ssl +
                 ", keystore=" + keystore +
                 '}';
